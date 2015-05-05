@@ -51,6 +51,7 @@ inline CommunicationId::CommunicationId(VpiDevice *dev) {
 }
 
 inline CommunicationId::~CommunicationId() {
+  channel_.AckEvent();
   if (id_ && rdma_destroy_id(id_)) {
     perror("[Error] rdma_destroy_id");
   }

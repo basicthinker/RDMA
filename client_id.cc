@@ -67,7 +67,6 @@ void ClientId::Connect(MemInfo local_mem) {
   }
 
   memcpy(&remote_mem_, event->param.conn.private_data, sizeof(MemInfo));
-  channel_.AckEvent();
 }
 
 } // namespace rdma

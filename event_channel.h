@@ -35,13 +35,13 @@ inline EventChannel::EventChannel() : last_event_(nullptr) {
 }
 
 inline EventChannel::~EventChannel() {
-  if (channel_) {
-    AckEvent();
-    rdma_destroy_event_channel(channel_);
-  }
+  if (!channel_) return;
+  AckEvent();
+  rdma_destroy_event_channel(channel_);
 }
 
 inline struct rdma_cm_event *EventChannel::GetEvent() {
+  if (!channel_) return nullptr;
   AckEvent();
   if (rdma_get_cm_event(channel_, &last_event_)) {
     perror("[Error] rdma_get_cm_event");
@@ -50,13 +50,12 @@ inline struct rdma_cm_event *EventChannel::GetEvent() {
 }
 
 inline void EventChannel::AckEvent() {
-  if (!last_event_) return;
+  if (!channel_ || !last_event_) return;
   if (rdma_ack_cm_event(last_event_)) {
     perror("[Error] rdma_ack_cm_event");
   }
   last_event_ = nullptr;
 }
-
 
 } // namespace rdma
 

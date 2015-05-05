@@ -9,6 +9,7 @@
 #include "server_id.h"
 
 #include <cstring>
+#include <cassert>
 
 namespace rdma {
 
@@ -36,6 +37,7 @@ struct rdma_cm_id *ServerId::Accept(MemInfo local_mem) {
     fprintf(stderr, "[Error] Failed to detect connection request!\n");
   }
   struct rdma_cm_id *cm_id = event->id;
+  assert(cm_id);
 
   struct rdma_conn_param param = {};
   param.responder_resources = 1;
@@ -47,13 +49,12 @@ struct rdma_cm_id *ServerId::Accept(MemInfo local_mem) {
     return nullptr;
   }
   event = channel_.GetEvent();
-  if (event->event != RDMA_CM_EVENT_ESTABLISHED) {
+  if (!event || event->event != RDMA_CM_EVENT_ESTABLISHED) {
     fprintf(stderr, "[Error] Failed to establish connection!\n");
     return nullptr;
   }
 
   memcpy(&remote_mem_, event->param.conn.private_data, sizeof(MemInfo));
-  channel_.AckEvent();
   return cm_id;
 }
 
