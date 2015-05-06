@@ -10,26 +10,29 @@
 #define RDMA_EVENT_CHANNEL_H_
 
 #include <cstdio>
+#include <boost/noncopyable.hpp>
 #include <rdma/rdma_cma.h>
 
 namespace rdma {
 
-class EventChannel {
+class EventChannel : private boost::noncopyable {
  public:
-  EventChannel();
+  EventChannel() : channel_(nullptr), last_event_(nullptr) {}
+  void Init();
   ~EventChannel();
 
-  struct rdma_cm_event *GetEvent();
+  rdma_cm_event *GetEvent();
   void AckEvent();
 
-  struct rdma_event_channel *channel() const { return channel_; }
+  void set_channel(rdma_event_channel *channel) { channel_ = channel; }
+  rdma_event_channel *channel() const { return channel_; }
 
  private:
-  struct rdma_event_channel *channel_;
-  struct rdma_cm_event *last_event_;
+  rdma_event_channel *channel_;
+  rdma_cm_event *last_event_;
 };
 
-inline EventChannel::EventChannel() : last_event_(nullptr) {
+inline void EventChannel::Init() {
   channel_ = rdma_create_event_channel();
   if (!channel_) perror("[Error] rdma_create_event_channel");
 }
@@ -40,7 +43,7 @@ inline EventChannel::~EventChannel() {
   rdma_destroy_event_channel(channel_);
 }
 
-inline struct rdma_cm_event *EventChannel::GetEvent() {
+inline rdma_cm_event *EventChannel::GetEvent() {
   if (!channel_) return nullptr;
   AckEvent();
   if (rdma_get_cm_event(channel_, &last_event_)) {
@@ -50,7 +53,7 @@ inline struct rdma_cm_event *EventChannel::GetEvent() {
 }
 
 inline void EventChannel::AckEvent() {
-  if (!channel_ || !last_event_) return;
+  if (!last_event_) return;
   if (rdma_ack_cm_event(last_event_)) {
     perror("[Error] rdma_ack_cm_event");
   }

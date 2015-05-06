@@ -9,22 +9,26 @@
 #ifndef RDMA_VPI_DEVICE_H_
 #define RDMA_VPI_DEVICE_H_
 
+#include <boost/noncopyable.hpp>
 #include <infiniband/verbs.h>
 
 namespace rdma {
 
 // A VPI device for RDMA
-class VpiDevice {
+class VpiDevice : private boost::noncopyable {
  public:
-  VpiDevice(const char *name = nullptr);
+  VpiDevice() : device_(nullptr), context_(nullptr) {}
+  VpiDevice(const char *name) : VpiDevice() { Init(name); }
+  void Init(const char *name = nullptr);
+
   ~VpiDevice();
 
-  struct ibv_device *device() const { return device_; }
-  struct ibv_context *context() const { return context_; }
+  ibv_device *device() const { return device_; }
+  ibv_context *context() const { return context_; }
 
  private:
-  struct ibv_device *device_;
-  struct ibv_context *context_;
+  ibv_device *device_;
+  ibv_context *context_;
 };
 
 // A wrapper for local device list
@@ -33,14 +37,14 @@ class VpiDeviceList {
   VpiDeviceList() : count_(0), list_(ibv_get_device_list(&count_)) {}
   ~VpiDeviceList() { if (list_) ibv_free_device_list(list_); }
 
-  struct ibv_device *Find(const char *dev_name) const;
+  ibv_device *Find(const char *dev_name) const;
 
   int count() const { return count_; }
-  struct ibv_device **list() const { return list_; }
+  ibv_device **list() const { return list_; }
 
  private:
   int count_;
-  struct ibv_device **list_;
+  ibv_device **list_;
 };
 
 } // namespace rdma

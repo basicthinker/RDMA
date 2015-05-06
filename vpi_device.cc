@@ -13,7 +13,7 @@
 
 namespace rdma {
 
-VpiDevice::VpiDevice(const char *name) : device_(nullptr), context_(nullptr) {
+void VpiDevice::Init(const char *name) {
   VpiDeviceList local_devices;
   if (!local_devices.count()) {
     fprintf(stderr, "[Error] Unavailable device list for %s.\n", name);
@@ -39,7 +39,7 @@ VpiDevice::~VpiDevice() {
   }
 }
 
-struct ibv_device *VpiDeviceList::Find(const char *dev_name) const {
+ibv_device *VpiDeviceList::Find(const char *dev_name) const {
   for (int i = 0; i < count(); ++i) {
     if (!dev_name || strcmp(dev_name, ibv_get_device_name(list()[i])) == 0) {
       return list()[i];
