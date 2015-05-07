@@ -15,6 +15,8 @@
 namespace rdma {
 
 void ClientId::Resolve(const char *host, const char *port) {
+  if (!communication_.id()) return;
+
   struct addrinfo hints = {};
   hints.ai_family = AF_INET;
   hints.ai_socktype = SOCK_STREAM;
@@ -25,10 +27,9 @@ void ClientId::Resolve(const char *host, const char *port) {
     fprintf(stderr, "[Error] getaddrinfo: %s\n", gai_strerror(err));
   }
 
-  if (!id()) return;
-
   for (struct addrinfo *i = res; i; i = i->ai_next) {
-    err = rdma_resolve_addr(id(), nullptr, i->ai_addr, kResolveTimeout);
+    err = rdma_resolve_addr(communication_.id(), nullptr, i->ai_addr,
+                            kResolveTimeout);
     if (!err) break;
   }
   freeaddrinfo(res);
@@ -37,7 +38,7 @@ void ClientId::Resolve(const char *host, const char *port) {
     return;
   }
 
-  if (rdma_resolve_route(id(), kResolveTimeout)) {
+  if (rdma_resolve_route(communication_.id(), kResolveTimeout)) {
     perror("[Error] rdma_resolve_route");
     return;
   }
@@ -48,7 +49,8 @@ void ClientId::Resolve(const char *host, const char *port) {
 }
 
 void ClientId::Connect(MemInfo local_mem) {
-  if (!id()) return;
+  if (!communication_.id()) return;
+  accessor_.Init(&communication_);
 
   struct rdma_conn_param param = {};
   param.initiator_depth = 1;
@@ -56,7 +58,7 @@ void ClientId::Connect(MemInfo local_mem) {
   param.private_data = &local_mem;
   param.private_data_len = sizeof(MemInfo);
 
-  if (rdma_connect(id(), &param)) {
+  if (rdma_connect(communication_.id(), &param)) {
     perror("[Error] rdma_connect");
     return;
   }
@@ -66,7 +68,9 @@ void ClientId::Connect(MemInfo local_mem) {
     return;
   }
 
-  memcpy(&remote_mem_, event->param.conn.private_data, sizeof(MemInfo));
+  MemInfo mem;
+  memcpy(&mem, event->param.conn.private_data, sizeof(MemInfo));
+  communication_.set_remote_mem(mem);
 }
 
 } // namespace rdma

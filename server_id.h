@@ -9,18 +9,32 @@
 #ifndef RDMA_SERVER_ID_H_
 #define RDMA_SERVER_ID_H_
 
+#include "accessor.h"
 #include "communication_id.h"
+#include "event_channel.h"
 
 namespace rdma {
 
 // The RDMA socket for server.
-class ServerId : public CommunicationId {
+class ServerId {
  public:
-  ServerId(VpiDevice *dev = nullptr) : CommunicationId(dev) {}
+  ServerId();
 
   void Listen(uint16_t port);
-  struct rdma_cm_id *Accept(MemInfo local_mem);
+  void Accept(MemInfo local_mem);
+
+ private:
+  EventChannel channel_;
+  CommunicationId listener_;
+  //TODO: put the following into threads
+  CommunicationId communication_;
+  Accessor accessor_;
 };
+
+inline ServerId::ServerId() {
+  channel_.Init();
+  listener_.Init(channel_.channel());
+}
 
 } // namespace rdma
 
