@@ -10,8 +10,9 @@
 #define RDMA_COMMUNICATION_ID_H_
 
 #include <cstdio>
-#include "event_channel.h"
-#include "vpi_device.h"
+#include <boost/noncopyable.hpp>
+#include <infiniband/verbs.h>
+#include <rdma/rdma_cma.h>
 
 namespace rdma {
 
@@ -21,37 +22,31 @@ struct MemInfo {
 };
 
 // The RDMA socket (root class).
-// Manages a connection and remote memory regions info.
-class CommunicationId {
+// Manages a connection and remote memory region info.
+class CommunicationId : private boost::noncopyable {
  public:
-  CommunicationId(VpiDevice *dev = nullptr);
+  CommunicationId() : id_(nullptr), remote_mem_({}) {}
+  void Init(rdma_event_channel *chnl = nullptr, ibv_context *ctx = nullptr);
   virtual ~CommunicationId();
 
-  struct rdma_cm_id *id() const { return id_; }
+  void set_id(rdma_cm_id *id) { id_ = id; }
+  rdma_cm_id *id() const { return id_; }
+  void set_remote_mem(MemInfo mem) { remote_mem_ = mem; }
   MemInfo remote_mem() const { return remote_mem_; }
-
-  static const int kResolveTimeout = 5000; // ms
-
- protected:
-  EventChannel channel_;
-  MemInfo remote_mem_;
+  ibv_context *context() const { return id_->verbs; }
 
  private:
-  struct rdma_cm_id *id_;
+  rdma_cm_id *id_;
+  MemInfo remote_mem_;
 };
 
-inline CommunicationId::CommunicationId(VpiDevice *dev) {
-  int err = rdma_create_id(channel_.channel(),
-      &id_, (dev ? dev->context() : nullptr), RDMA_PS_TCP);
-  if (err) {
+inline void CommunicationId::Init(rdma_event_channel *chnl, ibv_context *ctx) {
+  if (rdma_create_id(chnl, &id_, ctx, RDMA_PS_TCP)) {
     perror("[Error] rdma_create_id");
-    id_ = nullptr;
   }
-  remote_mem_ = {};
 }
 
 inline CommunicationId::~CommunicationId() {
-  channel_.AckEvent();
   if (id_ && rdma_destroy_id(id_)) {
     perror("[Error] rdma_destroy_id");
   }
